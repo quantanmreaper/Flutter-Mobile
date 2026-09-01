@@ -41,3 +41,50 @@ def get_completed_tasks(db: Session = Depends(get_db)):
         models.TaskModel.completed == True
     ).all()
 
+@app.get("/tasks/{task_id}")
+def get_task(task_id: int, db: Session = Depends(get_db)):
+    task = db.query(models.TaskModel).filter(
+        models.TaskModel.id == task_id   
+    ).first()
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+@app.post("/tasks", status_code=201)
+def create_task(task: TaskCreate, db: Session = Depends(get_db)):
+    if not task.title.strip():
+        raise HTTPException(status_code=400, detail="Title cannot be empty")
+    new_task = models.TaskModel(
+        title = task.title,
+        description = task.description,
+        completed = task.completed,
+    )
+    db.add(new_task)
+    db.commit()
+    db.refresh(new_task)
+    return new_task
+
+@app.put("/tasks/{task_id}")
+def update_task(task_id: int, updated: TaskCreate, db: Session = Depends(get_db)):
+    task = db.query(models.TaskModel).filter(
+        models.TaskModel.id == task_id
+    ).first()
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    task.title = updated.title
+    task.completed = updated.completed
+    task.description = updated.description
+    db.commit()
+    db.refresh(task)
+    return task
+
+@app.delete("/tasks/{task_id}")
+def delete_task(task_id: int, db: Session = Depends(get_db)):
+    task = db.query(models.TaskModel).filter(
+        models.TaskModel.id == task_id
+    ).first()
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    db.delete(task)
+    db.commit()
+    return {"message": f"Task {task_id} deleted successfully"}
